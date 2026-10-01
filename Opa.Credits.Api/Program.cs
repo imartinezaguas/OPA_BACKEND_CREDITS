@@ -49,6 +49,20 @@ builder.Services.AddScalarConfiguration();
 
 var app = builder.Build();
 
+// Ejecutar migraciones automáticamente al arrancar el contenedor
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    dbContext.Database.Migrate();
+    
+    // Crear un Asociado de prueba si la tabla está vacía para poder operar
+    if (!dbContext.Associates.Any())
+    {
+        dbContext.Associates.Add(new Opa.Credits.Domain.Entities.Associate { Identification = "123456789", Name = "Asociado de Prueba" });
+        dbContext.SaveChanges();
+    }
+}
+
 // Pipeline de Scalar oculto
 app.UseScalarConfiguration(app.Environment);
 
