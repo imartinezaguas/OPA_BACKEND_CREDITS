@@ -58,7 +58,7 @@ using (var scope = app.Services.CreateScope())
     // Crear un Asociado de prueba si la tabla está vacía para poder operar
     if (!dbContext.Associates.Any())
     {
-        dbContext.Associates.Add(new Opa.Credits.Domain.Entities.Associate { Identification = "123456789", Name = "Asociado de Prueba" });
+        dbContext.Associates.Add(new Opa.Credits.Domain.Entities.Associate("123456789", "Asociado de Prueba"));
         dbContext.SaveChanges();
     }
 }
