@@ -7,8 +7,8 @@ Este documento responde a los requerimientos teóricos, de negocio y arquitectó
 ## 1. Reglas de Negocio y Transiciones de Estado
 **¿Dónde se implementaron las reglas de negocio y por qué?**
 *   Las reglas de validación de entrada (ej: `valorSolicitado > 0`, `numeroCuotas > 0`) se implementaron en la capa de **Aplicación** utilizando **FluentValidation** (`CrearCreditoValidator`). Esto permite validar las peticiones rápidamente antes de que toquen la lógica pesada, manteniendo los controladores (API) limpios.
-*   Las reglas de **transiciones de estado** (ej: no pasar de RECHAZADO a DESEMBOLSADO) y el control de **créditos duplicados** se validan directamente en los **Servicios de Aplicación** (`CreditoService`).
-*   *¿Por qué ahí?* Porque las reglas de transición y duplicidad requieren conocimiento del estado actual del crédito y consultas a la base de datos (repositorios). La capa de Aplicación es la orquestadora perfecta para estos flujos.
+*   Las reglas de **transiciones de estado** (ej: no pasar de `Rejected` a `Disbursed`) y la **inmutabilidad de campos** se validan directamente en el corazón del Dominio: en la entidad **`Credit.cs`** (Domain-Driven Design).
+*   *¿Por qué ahí?* Porque las reglas de negocio puras pertenecen a la entidad. Al centralizarlas en `Credit.cs` usando `BusinessRuleException`, nos aseguramos de que es físicamente imposible que cualquier servicio o controlador modifique un crédito saltándose las reglas financieras.
 
 ---
 
@@ -32,15 +32,36 @@ Se implementó seguridad basada en **JSON Web Tokens (JWT)**.
 ---
 
 ## 4. Auditoría y Trazabilidad
-Al tratarse de un sistema financiero, implementamos una entidad `HistorialCredito`.
-*   **Información Mutable:** El `estado` del crédito es mutable, al igual que posiblemente las `observaciones` o la fecha de `fechaActualizacion`.
-*   **Información Inmutable:** El `valorSolicitado`, `tasaInteres`, `numeroCuotas` y los datos del asociado (`identificacionAsociado`) **no deben modificarse** una vez creado el crédito. Cualquier alteración financiera requeriría anular la solicitud y crear una nueva, o en su defecto, guardar el estado en tablas inmutables (Event Sourcing o Append-Only logs como `HistorialCredito`) donde cada cambio de estado registra el estado previo, el nuevo, la fecha y un responsable.
+Al tratarse de un sistema financiero, implementamos una entidad `CreditHistory`.
+*   **Información Mutable:** El `Status` del crédito es mutable, al igual que posiblemente la fecha de `UpdateDate`.
+*   **Información Inmutable:** El `RequestedValue`, `InterestRate`, `NumberOfInstallments` y los datos del asociado (`AssociateId`) **no deben modificarse** una vez creado el crédito (y está estrictamente bloqueado en el código si el crédito ya fue Desembolsado, Cancelado o Rechazado). Cualquier alteración financiera mayor requeriría anular la solicitud y crear una nueva. Todo cambio de estado genera automáticamente un registro inmutable en `CreditHistory`.
 
 ---
 
 ## 5. Despliegue y Arquitectura a Producción
 ### Cómo se expondría en un ambiente productivo
 1.  **HTTPS:** La API debe estar detrás de un Reverse Proxy (como Nginx o Azure API Management / AWS API Gateway) que termine la conexión SSL/TLS, garantizando tráfico cifrado.
+
+### Diagrama de Arquitectura
+
+```mermaid
+graph TD
+    Client[Frontend Angular / Cliente REST] -->|HTTPS| API[API REST .NET 9]
+    
+    subgraph "Backend - Clean Architecture"
+        API --> AppLayer[Capa de Aplicación - Servicios/DTOs]
+        AppLayer --> Domain[Capa de Dominio - Entidades/Reglas]
+        AppLayer --> Infra[Capa de Infraestructura - EF Core]
+        Infra --> WebhookQueue[Cola en Memoria - Canal Webhooks]
+        WebhookQueue --> WebhookWorker[BackgroundService Dispatcher]
+    end
+    
+    Infra -->|TCP/IP| DB[(PostgreSQL)]
+    WebhookWorker -->|POST HTTP| ExternalSystem[Sistema Externo de Webhooks]
+```
+
+*   **Stateless:** La `API REST`, la `Capa de Aplicación` y los `Controladores` son completamente *stateless* (no guardan estado en memoria entre peticiones). Esto permite escalar horizontalmente agregando más contenedores o servidores sin conflicto.
+*   **Stateful:** La base de datos `PostgreSQL` es el único componente que conserva estado persistente (*stateful*). La `Cola en Memoria` temporalmente guarda estado, por lo que en un ambiente productivo masivo se reemplazaría por una herramienta distribuida como RabbitMQ, Kafka o AWS SQS.
 2.  **Variables y Secretos:** En lugar de usar `appsettings.json`, en producción se usarían servicios de gestión de secretos como **Azure Key Vault** o **AWS Secrets Manager** inyectados en tiempo de ejecución.
 3.  **Base de Datos (SQL Server / PostgreSQL):** Usaríamos servicios administrados (Azure SQL Database o AWS RDS) con Backups automatizados diarios (PaaS), retención en un punto del tiempo, y cifrado en reposo (TDE).
 4.  **Health Checks:** Se implementarían endpoints `/health` (propios de .NET) para que un orquestador (como Kubernetes) sepa si el servicio está vivo (Liveness) y listo para recibir tráfico (Readiness).
