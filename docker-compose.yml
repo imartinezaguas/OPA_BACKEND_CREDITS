@@ -30,6 +30,21 @@ services:
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=OPA;Username=admindb;Password=TuPassword
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - default
+      - root_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.opa-api.rule=Host(`api-credits.cephasco.com`)"
+      - "traefik.http.routers.opa-api.entrypoints=websecure"
+      - "traefik.http.routers.opa-api.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.opa-api.loadbalancer.server.port=8080"
+      - "traefik.docker.network=root_default"
 
 volumes:
   pgdata:
+
+networks:
+  default:
+  root_default:
+    external: true
