@@ -10,7 +10,7 @@ if (-not $session) {
     exit 1
 }
 Write-Host "Connected successfully. Cloning and deploying..."
-$command = "rm -rf OPA_BACKEND_CREDITS; git clone https://github.com/imartinezaguas/OPA_BACKEND_CREDITS.git; cd OPA_BACKEND_CREDITS; docker compose up -d --build"
+$command = "cd OPA_BACKEND_CREDITS; git pull; docker compose up -d"
 $result = Invoke-SSHCommand -SessionId $session.SessionId -Command $command -TimeOut 300
 Write-Host "--- Output ---"
 Write-Host $result.Output

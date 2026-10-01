@@ -11,7 +11,7 @@ public static class CorsConfigurationExtensions
         {
             options.AddPolicy("AllowAngular", policy =>
             {
-                policy.WithOrigins("http://localhost:4200")
+                policy.WithOrigins("http://localhost:4200", "https://credits.cephasco.com", "http://credits.cephasco.com")
                       .AllowAnyHeader()
                       .AllowAnyMethod();
             });
