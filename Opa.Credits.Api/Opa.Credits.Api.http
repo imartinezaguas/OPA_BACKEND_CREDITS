@@ -1,0 +1,6 @@
+@Opa.Credits.Api_HostAddress = http://localhost:5210
+
+GET {{Opa.Credits.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
