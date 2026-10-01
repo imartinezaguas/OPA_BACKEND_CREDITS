@@ -1,33 +1,17 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:16
-    container_name: opa_postgres_db
-    environment:
-      POSTGRES_USER: admindb
-      POSTGRES_PASSWORD: TuPassword
-      POSTGRES_DB: OPA
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admindb -d OPA"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   api:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: opa_credits_api
-    depends_on:
-      db:
-        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8080:8080"
     environment:
-      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=OPA;Username=admindb;Password=TuPassword
+      - ConnectionStrings__DefaultConnection=Host=72.61.70.56;Port=5432;Database=OPA;Username=admindb;Password=AceroBronce2560*
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
     networks:
@@ -40,9 +24,6 @@ services:
       - "traefik.http.routers.opa-api.tls.certresolver=mytlschallenge"
       - "traefik.http.services.opa-api.loadbalancer.server.port=8080"
       - "traefik.docker.network=root_default"
-
-volumes:
-  pgdata:
 
 networks:
   default:
