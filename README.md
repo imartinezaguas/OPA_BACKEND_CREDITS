@@ -58,4 +58,4 @@ dotnet test
 
 ## Documentación Adicional
 Para conocer a fondo las decisiones técnicas, manejo de seguridad, justificación de arquitectura y respuestas sobre escalabilidad, por favor lee el documento adjunto:
-👉 [**ARCHITECTURE.md**](./ARCHITECTURE.md)
+👉 [**DOCUMENTACION.md**](./DOCUMENTACION.md)
